@@ -2,6 +2,14 @@ import torch
 import torch.nn as nn
 import dill
 
+def create_sequential_model(layers, bias=True):
+            model_layers = []
+            for i in range(len(layers)-1):
+                in_dim = layers[i]
+                out_dim = layers[i+1]
+                model_layers += [nn.Linear(in_dim, out_dim, bias=bias), nn.ReLU()]
+            return nn.Sequential(*model_layers[:-1])
+
 def save(filename, model):
     with open(filename, "wb+") as f:
         f.write(dill.dumps(model))
@@ -27,7 +35,7 @@ class MModel(nn.Module):
         super(MModel, self).__init__()
         self.catergories = len(sizes)
         self.sizes = sizes
-        self.models = {}
+        self.models = nn.ModuleDict()
         self.F_ = Dict2Class(self.models)
         self.params = nn.ParameterList()
 

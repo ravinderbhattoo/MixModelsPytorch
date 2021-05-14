@@ -1,6 +1,7 @@
 # examples
 examples/*.mmodel
-
+examples/data/*
+*.mmodel
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
