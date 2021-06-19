@@ -2,13 +2,34 @@ import torch
 import torch.nn as nn
 import dill
 
-def create_sequential_model(layers, bias=True):
-            model_layers = []
-            for i in range(len(layers)-1):
-                in_dim = layers[i]
-                out_dim = layers[i+1]
-                model_layers += [nn.Linear(in_dim, out_dim, bias=bias), nn.ReLU()]
-            return nn.Sequential(*model_layers[:-1])
+class MLP(nn.Module):
+    def __init__(self, D_in, D_out, activation=nn.ReLU, layers=[1], dropout_rate=[0.2], batch_norm=True, dropout=True):
+        super(MLP, self).__init__()
+
+        if len(layers)!=len(dropout_rate):
+            dropout_rate = dropout_rate*len(layers)
+
+        if type(activation)!=type([]):
+            activation = [activation]*len(layers)
+
+        self.seq = nn.Sequential()
+
+        for a, b, p, n, act in zip([D_in]+layers[:-1], layers, dropout_rate, range(1+len(layers)), activation):
+
+            self.seq.add_module("Linear {}".format(n), nn.Linear(a, b))
+
+            if dropout:
+                self.seq.add_module("Dropout {}".format(n), nn.Dropout(p=p))
+
+            self.seq.add_module("Activation {}".format(n), act())
+
+            if batch_norm:
+                self.seq.add_module("Batch Norm {}".format(n), nn.BatchNorm1d(b))
+
+        self.seq.add_module("Linear", nn.Linear(layers[-1], D_out))
+
+    def forward(self,x):
+        return self.seq(x)
 
 def save(filename, model):
     with open(filename, "wb+") as f:
@@ -38,12 +59,12 @@ class MModel(nn.Module):
         self.models = nn.ModuleDict()
         self.F_ = Dict2Class(self.models)
         self.params = nn.ParameterList()
+        self.extra = {}
 
     def addmodel(self, name, model):
         self.models[name] = model
+        self.params += nn.ParameterList(getattr(self.models, name).parameters())
         self.F_ = Dict2Class(self.models)
-        if isinstance(model, type(torch.nn.Module())):
-            self.params += nn.ParameterList(getattr(self.F_, name).parameters())
 
     def parameters(self):
         return self.params
@@ -52,6 +73,9 @@ class MModel(nn.Module):
         str_ = f"""MModel
 Catergories: {self.catergories}
 Models: \n{self.F_}
+Schema: \n{self.forwardfn.__doc__}
+Extras: \n{list(self.extra.keys())}
+Params: \n{[(i.shape, i.device) for i in self.params]}
                 """     
         return str_
 

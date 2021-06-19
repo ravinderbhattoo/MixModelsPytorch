@@ -1,1 +1,1 @@
-from .mmodel import MModel, save, load, create_sequential_model
+from .mmodel import MModel, save, load, MLP
